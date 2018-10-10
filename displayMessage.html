@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Phase Change Status</title>
+    <link rel="stylesheet" type="text/css" href="assets/css/bootstrap.min.css">
+    <script src="assets/js/sweetalert.min.js"></script>
+    <script src="assets/js/mqtt.min.js"></script>
+
+</head>
+<body style="background: #1c1d26; color: rgba(255, 255, 255, 0.75);">
+<div class="content">
+    <div class="container">
+        <div style="padding-top: 5%">
+            <h1 class="text-center"> Phase Change Status Messages</h1>
+            <table id="message-table" class="table table-responsive" style="border: 0; font-size: 50px; padding-top: 2%"></table>
+            <br>
+            <br>
+            <div id='load-content'>
+            	<p class="text-center" style="padding: 1%">Click on the load button to see changes in phase.</p>
+            	<input class="btn btn-primary" type="button" onclick="load()" value="Load">
+        	</div>
+        </div>
+    </div>
+</div>
+<script>
+    function load() {
+    	swal('Phase Changes would show automatically');
+    	document.getElementById('load-content').style.display='none';
+        fetch_last_status();
+    }
+
+
+function fetch_last_status(){
+	if (document.getElementById('load-content').style.display =='none'){
+
+
+	fetch("https://api.thingspeak.com/channels/598486/feeds/last.json")
+	.then((resp) => resp.json()) 
+  .then(function(data) {
+    process_message(data['field1']);
+    })
+  .catch(function(error) {
+    // If there is any error you will catch them here
+    console.log(error);
+  }); 
+  console.log("RAN!..............");
+}
+}
+setInterval(fetch_last_status, 5000);
+ 
+function process_message(current_status_msg){
+    console.log(current_status_msg);
+	if (replace_if_different(current_status_msg)){
+		display_message(current_status_msg);
+		apply_animation_to_table();
+		play_gong();
+	}
+}    
+function replace_if_different(status_msg){
+	if (get_saved_status_msg() !== status_msg){
+		save_status_msg(status_msg);
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+function get_saved_status_msg(){
+	return JSON.parse(localStorage.getItem("status_msg"));
+}
+
+function save_status_msg(current_status_msg){
+	 localStorage.setItem("status_msg", JSON.stringify(current_status_msg));
+}
+
+function serialize_message(current_payload){
+        return JSON.parse(current_payload.toString());
+    }
+
+
+function apply_animation_to_table(){
+	var msg_table = document.getElementById('message-table');
+	msg_table.style.backgroundColor = 'red';
+setTimeout(function (){	change_bg_color(msg_table, ''); }, 500);
+setTimeout(function (){	change_bg_color(msg_table, 'red'); }, 500);
+setTimeout(function (){	change_bg_color(msg_table, ''); }, 500);
+}
+
+function change_bg_color(dom_element, color){
+	dom_element.style.background = color;
+}
+
+function play_gong(){
+var audio = new Audio('gong.wav');
+audio.play();
+}
+
+function display_message(current_payload) {
+        var serialized_payload = serialize_message(current_payload);
+        document.getElementById('message-table').innerHTML = prepare_table_html(serialized_payload);
+    }
+
+function get_time_now(){
+	var currentdate = new Date(); 
+var datetime = currentdate.getDate() + "/"
+                + (currentdate.getMonth()+1)  + "/" 
+                + currentdate.getFullYear() + " @ "  
+                + currentdate.getHours() + ":"  
+                + currentdate.getMinutes();
+                return datetime
+}
+
+    function prepare_table_html(serialize_payload){
+        var meter_id_str = "<tr><td>Meter id</td><td>"+ serialize_payload['meter_id'] +"</td></tr>";
+        var phase_transition = "<tr><td>Phase Transition</td><td>"+ serialize_payload['previous_phase'] + "->"+ serialize_payload['current_phase']+"</td></tr>";
+        var phase_transition_time = "<tr><td>Time of change</td><td>"+ get_time_now();+"</td></tr>";
+        return meter_id_str+phase_transition+phase_transition_time;
+    }
+
+
+</script>
+</body>
+</html>
